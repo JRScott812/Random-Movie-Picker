@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Movie Picker</title>
+    <script src="picker.js" defer></script>
+</head>
+
+<body>
+    <h1>Random Movie Picker</h1>
+    <fieldset>
+        <legend>Select Movie Type:</legend>
+
+        <div>
+            <input type="radio" id="all" name="movie-type" value="all" checked />
+            <label for="all">All</label>
+        </div>
+
+        <div>
+            <input type="radio" id="fiction" name="movie-type" value="fiction" />
+            <label for="fiction">Fiction</label>
+        </div>
+
+        <div>
+            <input type="radio" id="non-fiction" name="movie-type" value="non-fiction" />
+            <label for="non-fiction">Non-fiction</label>
+        </div>
+    </fieldset>
+
+    <button id="pick-movie" type="button">Pick a movie</button>
+
+    <div id="results">
+        <div id="carousel">
+            <h2>Carousel: </h2>
+            <h3 id="carousel-value"></h3>
+        </div>
+        <div id="section">
+            <h2>Section: </h2>
+            <h3 id="section-value"></h3>
+        </div>
+        <div id="row">
+            <h2>Row: </h2>
+            <h3 id="row-value"></h3>
+        </div>
+        <div id="sub-section">
+            <h2>Sub-Section: </h2>
+            <h3 id="sub-section-value"></h3>
+        </div>
+        <div id="index">
+            <h2>Index: </h2>
+            <h3 id="index-value"></h3>
+        </div>
+    </div>
+</body>
+
+</html>
