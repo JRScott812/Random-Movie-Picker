@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)));
 const CATALOG_URL = "https://catalog.library.taylor.edu/cgi-bin/koha/opac-search.pl";
+const DEFAULT_SHELF_ITEMNUMBER = "2274508";
 const MOVIE_TYPE_SUBJECTS = { fiction: "Feature films", "non-fiction": "Documentary films" };
 const responseCache = new Map();
 const MAX_BODY_SIZE = 10 * 1024;
@@ -95,6 +96,21 @@ function extractShelfItems(page) {
 	return [...groupedItems.values()];
 }
 
+function extractShelfNavigation(page) {
+	return {
+		previousItemnumber: page.match(/id="browser_previous"[\s\S]*?data-prev-itemnumber="(\d+)"/)?.[1] || "",
+		nextItemnumber: page.match(/id="browser_next"[\s\S]*?data-next-itemnumber="(\d+)"/)?.[1] || ""
+	};
+}
+
+async function loadShelf(itemnumber) {
+	const shelfUrl = `${CATALOG_URL.replace("opac-search.pl", "svc/shelfbrowser.pl")}?shelfbrowse_itemnumber=${itemnumber}`;
+	const shelfPage = await fetchTextCached(shelfUrl);
+	const shelfItems = extractShelfItems(shelfPage).slice(0, 7);
+	const items = await Promise.all(shelfItems.map(async (item) => ({ ...item, posterUrl: await findPoster(item.title) })));
+	return { items, ...extractShelfNavigation(shelfPage) };
+}
+
 async function findPoster(title) {
 	if (!process.env.TMDB_ACCESS_TOKEN) return "";
 
@@ -137,7 +153,7 @@ async function findMovie({ movieType, searchTerm, selectionMode }) {
 	let page = await fetchTextCached(searchUrl);
 	let recordUrl = searchUrl;
 	const detailUrls = [...page.matchAll(/href="([^\"]*opac-detail\.pl\?biblionumber=\d+)/g)].map((match) => match[1]);
-	const detailUrl = detailUrls[Math.floor(Math.random() * detailUrls.length)];
+	const detailUrl = detailUrls[selectionMode === "random" ? Math.floor(Math.random() * detailUrls.length) : 0];
 	if (detailUrl) {
 		recordUrl = new URL(detailUrl.replace(/&amp;/g, "&"), CATALOG_URL).toString();
 		page = await fetchTextCached(recordUrl);
@@ -149,7 +165,7 @@ async function findMovie({ movieType, searchTerm, selectionMode }) {
 	const actors = extractFirstMatch(page, /class="marcnote marcnote-511"[^>]*>([\s\S]*?)<\/p>/);
 	const holdings = [...page.matchAll(/<tr vocab="http:\/\/schema\.org\/"[\s\S]*?<\/tr>/g)];
 	const availableHoldings = holdings.filter((row) => /Taylor University Zondervan Library/.test(row[0]));
-	const holding = availableHoldings[selectionMode === "classic" ? Math.floor(Math.random() * availableHoldings.length) : 0]?.[0];
+	const holding = availableHoldings[selectionMode === "random" ? Math.floor(Math.random() * availableHoldings.length) : 0]?.[0];
 	if (!title || !holding) {
 		throw new Error("No available Taylor DVD matched that search.");
 	}
@@ -159,12 +175,7 @@ async function findMovie({ movieType, searchTerm, selectionMode }) {
 	const callNumber = extractFirstMatch(holding, /class="call_no"[^>]*>([\s\S]*?)\s*\(/);
 	const posterUrl = await findPoster(title);
 	const shelfItemnumber = holding.match(/shelfbrowse_itemnumber=(\d+)/)?.[1];
-	let shelf = [];
-	if (shelfItemnumber) {
-		const shelfPage = await fetchTextCached(`${CATALOG_URL.replace("opac-search.pl", "svc/shelfbrowser.pl")}?shelfbrowse_itemnumber=${shelfItemnumber}`);
-		const shelfItems = extractShelfItems(shelfPage).slice(0, 7);
-		shelf = await Promise.all(shelfItems.map(async (item) => ({ ...item, posterUrl: await findPoster(item.title) })));
-	}
+	const shelf = shelfItemnumber ? await loadShelf(shelfItemnumber) : { items: [], previousItemnumber: "", nextItemnumber: "" };
 	return { title, titleNote, director, actors, location: [library, shelving].filter(Boolean).join(" - "), callNumber, recordUrl, posterUrl, shelf };
 }
 
@@ -209,7 +220,7 @@ const server = createServer(async (request, response) => {
 				error.status = 400;
 				throw error;
 			}
-			if (input.selectionMode !== undefined && !["standard", "classic"].includes(input.selectionMode)) {
+			if (input.selectionMode !== undefined && !["random", "shelf", "classic"].includes(input.selectionMode)) {
 				const error = new Error("Choose a valid selection mode.");
 				error.status = 400;
 				throw error;
@@ -220,6 +231,22 @@ const server = createServer(async (request, response) => {
 		} catch (error) {
 			response.writeHead(error instanceof SyntaxError || error.status ? error.status || 400 : 404, { ...headers, "Content-Type": "application/json; charset=utf-8" });
 			response.end(JSON.stringify({ message: error.message }));
+		}
+		return;
+	}
+
+	if (request.method === "GET" && ["/api/shelf", "/api/shelf/start"].includes(requestUrl.pathname)) {
+		const itemnumber = requestUrl.pathname === "/api/shelf/start" ? DEFAULT_SHELF_ITEMNUMBER : requestUrl.searchParams.get("itemnumber");
+		if (!/^\d+$/.test(itemnumber || "")) {
+			response.writeHead(400, { ...headers, "Content-Type": "application/json; charset=utf-8" });
+			return response.end(JSON.stringify({ message: "A valid shelf item is required." }));
+		}
+		try {
+			response.writeHead(200, { ...headers, "Content-Type": "application/json; charset=utf-8" });
+			response.end(JSON.stringify(await loadShelf(itemnumber)));
+		} catch {
+			response.writeHead(502, { ...headers, "Content-Type": "application/json; charset=utf-8" });
+			response.end(JSON.stringify({ message: "The shelf could not be loaded." }));
 		}
 		return;
 	}

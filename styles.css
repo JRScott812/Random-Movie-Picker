@@ -299,6 +299,18 @@ button:disabled::before {
 	outline-offset: 3px;
 }
 
+.shelf-controls {
+	display: flex;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin-top: 1rem;
+}
+
+.shelf-control {
+	padding: 0.5rem 0.75rem;
+	font-size: 0.75rem;
+}
+
 .random-values {
 	display: grid;
 	grid-template-columns: repeat(5, minmax(0, 1fr));

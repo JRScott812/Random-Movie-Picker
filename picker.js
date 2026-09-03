@@ -26,6 +26,44 @@ function displayClassicValues(movieType) {
 	document.getElementById("search-description").innerText = "Classic random indices generated.";
 }
 
+function renderShelf(shelf) {
+	const shelfItems = document.getElementById("shelf-items");
+	shelfItems.replaceChildren(...shelf.items.map((item) => {
+		const link = document.createElement("a");
+		link.className = "shelf-item";
+		link.href = item.recordUrl;
+		link.target = "_blank";
+		link.rel = "noopener";
+		link.title = item.title;
+		if (item.posterUrl) {
+			const poster = document.createElement("img");
+			poster.src = item.posterUrl;
+			poster.alt = `Poster for ${item.title}`;
+			poster.onerror = () => poster.replaceWith(Object.assign(document.createElement("span"), { className: "shelf-placeholder", innerText: "No poster" }));
+			link.append(poster);
+		} else {
+			link.append(Object.assign(document.createElement("span"), { className: "shelf-placeholder", innerText: "No poster" }));
+		}
+		const label = document.createElement("span");
+		label.append(item.title);
+		if (item.copyCount > 1) {
+			const count = document.createElement("span");
+			count.className = "copy-count";
+			count.innerText = `x${item.copyCount}`;
+			count.title = `${item.copyCount} copies available`;
+			label.append(" ", count);
+		}
+		link.append(label);
+		return link;
+	}));
+	const shelfPrevious = document.getElementById("shelf-previous");
+	const shelfNext = document.getElementById("shelf-next");
+	shelfPrevious.hidden = !shelf.previousItemnumber;
+	shelfNext.hidden = !shelf.nextItemnumber;
+	shelfPrevious.dataset.itemnumber = shelf.previousItemnumber;
+	shelfNext.dataset.itemnumber = shelf.nextItemnumber;
+}
+
 async function DisplayCatalogSearch(movieType, searchTerm, selectionMode) {
 	const description = document.getElementById("search-description");
 	const moviePreview = document.getElementById("movie-preview");
@@ -77,44 +115,8 @@ async function DisplayCatalogSearch(movieType, searchTerm, selectionMode) {
 		};
 		document.getElementById("movie-location").innerText = movie.location;
 		document.getElementById("movie-call-number").innerText = movie.callNumber;
-		const shelfItems = document.getElementById("shelf-items");
-		shelfItems.replaceChildren(...movie.shelf.map((item) => {
-			const link = document.createElement("a");
-			link.className = "shelf-item";
-			link.href = item.recordUrl;
-			link.target = "_blank";
-			link.rel = "noopener";
-			link.title = item.title;
-			if (item.posterUrl) {
-				const poster = document.createElement("img");
-				poster.src = item.posterUrl;
-				poster.alt = `Poster for ${item.title}`;
-				poster.onerror = () => {
-					poster.replaceWith(Object.assign(document.createElement("span"), {
-						className: "shelf-placeholder",
-						innerText: "No poster"
-					}));
-				};
-				link.append(poster);
-			} else {
-				const placeholder = document.createElement("span");
-				placeholder.className = "shelf-placeholder";
-				placeholder.innerText = "No poster";
-				link.append(placeholder);
-			}
-			const label = document.createElement("span");
-			label.append(item.title);
-			if (item.copyCount > 1) {
-				const count = document.createElement("span");
-				count.className = "copy-count";
-				count.innerText = `x${item.copyCount}`;
-				count.title = `${item.copyCount} copies available`;
-				label.append(" ", count);
-			}
-			link.append(label);
-			return link;
-		}));
-		shelfPreview.hidden = movie.shelf.length === 0;
+		renderShelf(movie.shelf);
+		shelfPreview.hidden = movie.shelf.items.length === 0;
 		description.innerText = "Available now in the PALNI catalog.";
 		moviePreview.hidden = false;
 	} catch (error) {
@@ -127,7 +129,60 @@ async function DisplayCatalogSearch(movieType, searchTerm, selectionMode) {
 	}
 }
 
+async function DisplayShelfSearch() {
+	const description = document.getElementById("search-description");
+	const moviePreview = document.getElementById("movie-preview");
+	const classicPreview = document.getElementById("classic-preview");
+	const shelfPreview = document.getElementById("shelf-preview");
+	const results = document.getElementById("results");
+	const pickMovie = document.getElementById("pick-movie");
+
+	classicPreview.hidden = true;
+	moviePreview.hidden = true;
+	shelfPreview.hidden = true;
+	description.innerText = "Opening the DVD shelf...";
+	description.setAttribute("role", "status");
+	results.classList.add("is-loading");
+	pickMovie.disabled = true;
+	pickMovie.setAttribute("aria-busy", "true");
+	pickMovie.innerText = "Opening shelf...";
+
+	try {
+		const response = await fetch("/api/shelf/start");
+		const shelf = await response.json();
+		if (!response.ok) throw new Error(shelf.message);
+		renderShelf(shelf);
+		shelfPreview.hidden = shelf.items.length === 0;
+		description.innerText = "Browsing the PALNI DVD shelf.";
+	} catch (error) {
+		description.innerText = error.message || "The shelf could not be loaded.";
+	} finally {
+		results.classList.remove("is-loading");
+		pickMovie.disabled = false;
+		pickMovie.removeAttribute("aria-busy");
+		pickMovie.innerText = "Find a movie";
+	}
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+	async function browseShelf(itemnumber, button) {
+		button.disabled = true;
+		try {
+			const response = await fetch(`/api/shelf?itemnumber=${encodeURIComponent(itemnumber)}`);
+			const shelf = await response.json();
+			if (!response.ok) throw new Error(shelf.message);
+			renderShelf(shelf);
+			document.getElementById("shelf-items").scrollTo({ left: 0, behavior: "smooth" });
+		} catch (error) {
+			document.getElementById("search-description").innerText = error.message || "The shelf could not be loaded.";
+		} finally {
+			button.disabled = false;
+		}
+	}
+
+	document.getElementById("shelf-previous").addEventListener("click", (event) => browseShelf(event.currentTarget.dataset.itemnumber, event.currentTarget));
+	document.getElementById("shelf-next").addEventListener("click", (event) => browseShelf(event.currentTarget.dataset.itemnumber, event.currentTarget));
+
 	document.getElementById("movie-picker").addEventListener("submit", (event) => {
 		event.preventDefault();
 		const selectedType = document.querySelector("input[name='movie-type']:checked").value;
@@ -135,6 +190,10 @@ document.addEventListener("DOMContentLoaded", () => {
 		const searchTerm = document.getElementById("movie-search").value;
 		if (selectedMode === "classic") {
 			displayClassicValues(selectedType);
+			return;
+		}
+		if (selectedMode === "shelf") {
+			DisplayShelfSearch();
 			return;
 		}
 		DisplayCatalogSearch(selectedType, searchTerm, selectedMode);

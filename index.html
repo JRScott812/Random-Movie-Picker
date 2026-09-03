@@ -42,13 +42,17 @@
 				<legend>Selection mode</legend>
 
 				<div class="movie-types">
-					<input type="radio" id="standard" name="selection-mode" value="standard" checked />
-					<label for="standard">Standard</label>
+					<input type="radio" id="random" name="selection-mode" value="random" checked />
+					<label for="random">Random</label>
+
+					<input type="radio" id="shelf" name="selection-mode" value="shelf" />
+					<label for="shelf">Shelf browsing</label>
 
 					<input type="radio" id="classic" name="selection-mode" value="classic" />
 					<label for="classic">Classic</label>
 				</div>
-				<p class="mode-description"><strong>Standard</strong> finds a random available movie from the catalog.
+				<p class="mode-description"><strong>Random</strong> finds a random available movie from the catalog.
+					<strong>Shelf browsing</strong> starts at the first matching record and shows nearby DVDs.
 					<strong>Classic</strong> generates the original random index numbers.</p>
 			</fieldset>
 
@@ -117,6 +121,10 @@
 					<span>DVD Collection</span>
 				</div>
 				<div id="shelf-items" class="shelf-items"></div>
+				<div class="shelf-controls">
+					<button id="shelf-previous" class="shelf-control" type="button" hidden>Previous</button>
+					<button id="shelf-next" class="shelf-control" type="button" hidden>Next</button>
+				</div>
 			</section>
 		</section>
 	</main>
