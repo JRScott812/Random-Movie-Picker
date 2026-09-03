@@ -1,2 +1,2 @@
 # Random-Movie-Picker
-Picks as random DVD from Taylor University's Zondervan Library
+Searches for available English-language DVDs at Taylor University's Zondervan Library through the PALNI catalog. Choose a category and optionally enter a title or keyword, then open the filtered catalog results.
