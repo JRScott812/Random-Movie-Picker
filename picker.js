@@ -21,7 +21,9 @@ function displayClassicValues(movieType) {
 		document.getElementById(`${name.replace(/([A-Z])/g, "-$1").toLowerCase()}-value`).innerText = value;
 	});
 	document.getElementById("movie-preview").hidden = true;
+	document.getElementById("shelf-preview").hidden = true;
 	document.getElementById("classic-preview").hidden = false;
+	document.getElementById("search-description").innerText = "Classic random indices generated.";
 }
 
 async function DisplayCatalogSearch(movieType, searchTerm, selectionMode) {
@@ -30,9 +32,11 @@ async function DisplayCatalogSearch(movieType, searchTerm, selectionMode) {
 	const classicPreview = document.getElementById("classic-preview");
 	const results = document.getElementById("results");
 	const pickMovie = document.getElementById("pick-movie");
+	const shelfPreview = document.getElementById("shelf-preview");
 
 	classicPreview.hidden = true;
 	moviePreview.hidden = true;
+	shelfPreview.hidden = true;
 	description.innerText = "Finding an available DVD...";
 	description.setAttribute("role", "status");
 	results.classList.add("is-loading");
@@ -54,13 +58,63 @@ async function DisplayCatalogSearch(movieType, searchTerm, selectionMode) {
 
 		const movieTitle = document.getElementById("movie-title");
 		const moviePoster = document.getElementById("movie-poster");
+		const movieNote = document.getElementById("movie-note");
+		const directorRow = document.getElementById("director-row");
+		const actorsRow = document.getElementById("actors-row");
 		movieTitle.innerText = movie.title;
 		movieTitle.href = movie.recordUrl;
+		movieNote.innerText = movie.titleNote || "";
+		movieNote.hidden = !movie.titleNote;
+		document.getElementById("movie-director").innerText = movie.director || "";
+		directorRow.hidden = !movie.director;
+		document.getElementById("movie-actors").innerText = movie.actors || "";
+		actorsRow.hidden = !movie.actors;
 		moviePoster.src = movie.posterUrl;
 		moviePoster.alt = movie.posterUrl ? `Poster for ${movie.title}` : "";
 		moviePoster.hidden = !movie.posterUrl;
+		moviePoster.onerror = () => {
+			moviePoster.hidden = true;
+		};
 		document.getElementById("movie-location").innerText = movie.location;
 		document.getElementById("movie-call-number").innerText = movie.callNumber;
+		const shelfItems = document.getElementById("shelf-items");
+		shelfItems.replaceChildren(...movie.shelf.map((item) => {
+			const link = document.createElement("a");
+			link.className = "shelf-item";
+			link.href = item.recordUrl;
+			link.target = "_blank";
+			link.rel = "noopener";
+			link.title = item.title;
+			if (item.posterUrl) {
+				const poster = document.createElement("img");
+				poster.src = item.posterUrl;
+				poster.alt = `Poster for ${item.title}`;
+				poster.onerror = () => {
+					poster.replaceWith(Object.assign(document.createElement("span"), {
+						className: "shelf-placeholder",
+						innerText: "No poster"
+					}));
+				};
+				link.append(poster);
+			} else {
+				const placeholder = document.createElement("span");
+				placeholder.className = "shelf-placeholder";
+				placeholder.innerText = "No poster";
+				link.append(placeholder);
+			}
+			const label = document.createElement("span");
+			label.append(item.title);
+			if (item.copyCount > 1) {
+				const count = document.createElement("span");
+				count.className = "copy-count";
+				count.innerText = `x${item.copyCount}`;
+				count.title = `${item.copyCount} copies available`;
+				label.append(" ", count);
+			}
+			link.append(label);
+			return link;
+		}));
+		shelfPreview.hidden = movie.shelf.length === 0;
 		description.innerText = "Available now in the PALNI catalog.";
 		moviePreview.hidden = false;
 	} catch (error) {

@@ -48,6 +48,8 @@
 					<input type="radio" id="classic" name="selection-mode" value="classic" />
 					<label for="classic">Classic</label>
 				</div>
+				<p class="mode-description"><strong>Standard</strong> finds a random available movie from the catalog.
+					<strong>Classic</strong> generates the original random index numbers.</p>
 			</fieldset>
 
 			<label for="movie-search">Title or keyword <span>(optional)</span></label>
@@ -88,7 +90,16 @@
 				<div class="movie-details">
 					<p class="preview-label">Available DVD</p>
 					<h2><a id="movie-title" target="_blank" rel="noopener"></a></h2>
+					<p id="movie-note" class="movie-note" hidden></p>
 					<dl>
+						<div id="director-row" hidden>
+							<dt>Director</dt>
+							<dd id="movie-director"></dd>
+						</div>
+						<div id="actors-row" hidden>
+							<dt>Actors</dt>
+							<dd id="movie-actors"></dd>
+						</div>
 						<div>
 							<dt>Location</dt>
 							<dd id="movie-location"></dd>
@@ -100,6 +111,13 @@
 					</dl>
 				</div>
 			</article>
+			<section id="shelf-preview" hidden aria-label="Nearby movies on the shelf">
+				<div class="shelf-heading">
+					<p class="preview-label">Nearby on the shelf</p>
+					<span>DVD Collection</span>
+				</div>
+				<div id="shelf-items" class="shelf-items"></div>
+			</section>
 		</section>
 	</main>
 </body>

@@ -1,6 +1,8 @@
 # Random-Movie-Picker
 Displays a preview of an available English-language DVD from Taylor University's Zondervan Library through the PALNI catalog, including its location and call number.
 
+Standard mode also shows nearby records from PALNI's physical DVD shelf, with links to the catalog records and TMDB poster art when available. Classic mode preserves the original random-index picker.
+
 Run `npm start` and open http://localhost:3000.
 
 ## Optional TMDB posters
