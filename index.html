@@ -7,7 +7,9 @@
 	<title>Random Movie Picker</title>
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+	<link
+		href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap"
+		rel="stylesheet">
 	<link rel="stylesheet" href="styles.css">
 	<script src="picker.js" defer></script>
 </head>
@@ -36,6 +38,18 @@
 				</div>
 			</fieldset>
 
+			<fieldset>
+				<legend>Selection mode</legend>
+
+				<div class="movie-types">
+					<input type="radio" id="standard" name="selection-mode" value="standard" checked />
+					<label for="standard">Standard</label>
+
+					<input type="radio" id="classic" name="selection-mode" value="classic" />
+					<label for="classic">Classic</label>
+				</div>
+			</fieldset>
+
 			<label for="movie-search">Title or keyword <span>(optional)</span></label>
 			<input id="movie-search" name="movie-search" type="search" placeholder="e.g. Pride and Prejudice" />
 
@@ -44,14 +58,45 @@
 
 		<section id="results" aria-live="polite">
 			<p id="search-description"></p>
+			<article id="classic-preview" hidden>
+				<p class="preview-label">Classic random indices</p>
+				<dl class="random-values">
+					<div>
+						<dt>Carousel</dt>
+						<dd id="carousel-value"></dd>
+					</div>
+					<div>
+						<dt>Section</dt>
+						<dd id="section-value"></dd>
+					</div>
+					<div>
+						<dt>Row</dt>
+						<dd id="row-value"></dd>
+					</div>
+					<div>
+						<dt>Sub-section</dt>
+						<dd id="sub-section-value"></dd>
+					</div>
+					<div>
+						<dt>Index</dt>
+						<dd id="index-value"></dd>
+					</div>
+				</dl>
+			</article>
 			<article id="movie-preview" hidden>
 				<img id="movie-poster" hidden>
 				<div class="movie-details">
 					<p class="preview-label">Available DVD</p>
 					<h2><a id="movie-title" target="_blank" rel="noopener"></a></h2>
 					<dl>
-						<div><dt>Location</dt><dd id="movie-location"></dd></div>
-						<div><dt>Call number</dt><dd id="movie-call-number"></dd></div>
+						<div>
+							<dt>Location</dt>
+							<dd id="movie-location"></dd>
+						</div>
+						<div>
+							<dt>Call number</dt>
+							<dd id="movie-call-number"></dd>
+						</div>
 					</dl>
 				</div>
 			</article>
