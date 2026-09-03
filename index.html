@@ -39,12 +39,22 @@
 			<label for="movie-search">Title or keyword <span>(optional)</span></label>
 			<input id="movie-search" name="movie-search" type="search" placeholder="e.g. Pride and Prejudice" />
 
-			<button id="pick-movie" type="button">Search PALNI</button>
+			<button id="pick-movie" type="submit">Find a movie</button>
 		</form>
 
 		<section id="results" aria-live="polite">
 			<p id="search-description"></p>
-			<a id="catalog-link" hidden target="_blank" rel="noopener">View available DVDs in the PALNI catalog</a>
+			<article id="movie-preview" hidden>
+				<img id="movie-poster" hidden>
+				<div class="movie-details">
+					<p class="preview-label">Available DVD</p>
+					<h2><a id="movie-title" target="_blank" rel="noopener"></a></h2>
+					<dl>
+						<div><dt>Location</dt><dd id="movie-location"></dd></div>
+						<div><dt>Call number</dt><dd id="movie-call-number"></dd></div>
+					</dl>
+				</div>
+			</article>
 		</section>
 	</main>
 </body>
