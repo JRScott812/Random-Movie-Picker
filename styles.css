@@ -366,6 +366,13 @@ h2 {
 	margin: 0;
 }
 
+.movie-heading {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 0.25rem 0.6rem;
+}
+
 #movie-title {
 	color: var(--taylor-purple);
 	font-family: "Source Serif 4", serif;
@@ -377,6 +384,13 @@ h2 {
 
 #movie-title:hover {
 	color: var(--taylor-dark-purple);
+}
+
+#movie-director {
+	margin: 0;
+	color: #625866;
+	font-size: 0.8rem;
+	font-weight: 600;
 }
 
 .movie-note {
@@ -403,6 +417,21 @@ dd {
 	margin: 0.25rem 0 0;
 	font-size: 0.9rem;
 	line-height: 1.5;
+}
+
+#movie-actors {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+.actor-name {
+	padding: 0.2rem 0.45rem;
+	border: 1px solid var(--border);
+	border-radius: 3px;
+	background: #f8f6f1;
+	font-size: 0.8rem;
+	line-height: 1.35;
 }
 
 @media (max-width: 34rem) {
