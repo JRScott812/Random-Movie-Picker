@@ -15,3 +15,18 @@ npm start
 ```
 
 For a deployment or GitHub Actions workflow, add the same value as a `TMDB_ACCESS_TOKEN` repository secret/environment variable. Environment variables supplied by the host take precedence over `.env` values. The token is never sent to the browser. Without it, the app continues to show the PALNI title, location, and call number without poster art.
+
+## Production deployment
+
+GitHub Pages serves the frontend at `https://jrscott812.github.io/Random-Movie-Picker/`. The API runs on Heroku at `https://random-movie-picker-4d4e4afe3a91.herokuapp.com/`; [picker.js](picker.js) automatically sends Pages requests to that service. Direct visits to the Heroku URL continue to use its same-origin API.
+
+Set these Heroku Config Vars:
+
+```text
+TMDB_ACCESS_TOKEN=your TMDB API Read Access Token
+ALLOWED_ORIGIN=https://jrscott812.github.io
+CATALOG_URL=https://catalog.library.taylor.edu/cgi-bin/koha/opac-search.pl
+DEFAULT_SHELF_ITEMNUMBER=2274508
+```
+
+GitHub repository secrets are not automatically available to Heroku at runtime. The server reads Heroku's `PORT` automatically. `ALLOWED_ORIGIN`, `CATALOG_URL`, and `DEFAULT_SHELF_ITEMNUMBER` have the shown values as defaults, so you only need to set them when changing the deployment or library source.

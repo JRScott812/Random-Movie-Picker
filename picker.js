@@ -2,9 +2,24 @@ const MOVIE_TYPE_SUBJECTS = {
 	fiction: "Feature films",
 	"non-fiction": "Documentary films"
 };
+const API_ORIGIN = window.location.hostname === "jrscott812.github.io"
+	? "https://random-movie-picker-4d4e4afe3a91.herokuapp.com"
+	: "";
+
+function apiUrl(path) {
+	return `${API_ORIGIN}${path}`;
+}
 
 function randomInteger(min, max) {
 	return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+async function parseApiResponse(response) {
+	const contentType = response.headers.get("content-type") || "";
+	if (!contentType.includes("application/json")) {
+		throw new Error("The movie API is unavailable. This app must be deployed to a Node.js host, not GitHub Pages.");
+	}
+	return response.json();
 }
 
 function displayClassicValues(movieType) {
@@ -83,12 +98,12 @@ async function DisplayCatalogSearch(movieType, searchTerm, selectionMode) {
 	pickMovie.innerText = "Finding a movie...";
 
 	try {
-		const response = await fetch("/api/movie", {
+		const response = await fetch(apiUrl("/api/movie"), {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ movieType, searchTerm, selectionMode })
 		});
-		const movie = await response.json();
+		const movie = await parseApiResponse(response);
 
 		if (!response.ok) {
 			throw new Error(movie.message);
@@ -148,8 +163,8 @@ async function DisplayShelfSearch() {
 	pickMovie.innerText = "Opening shelf...";
 
 	try {
-		const response = await fetch("/api/shelf/start");
-		const shelf = await response.json();
+		const response = await fetch(apiUrl("/api/shelf/start"));
+		const shelf = await parseApiResponse(response);
 		if (!response.ok) throw new Error(shelf.message);
 		renderShelf(shelf);
 		shelfPreview.hidden = shelf.items.length === 0;
@@ -168,8 +183,8 @@ document.addEventListener("DOMContentLoaded", () => {
 	async function browseShelf(itemnumber, button) {
 		button.disabled = true;
 		try {
-			const response = await fetch(`/api/shelf?itemnumber=${encodeURIComponent(itemnumber)}`);
-			const shelf = await response.json();
+			const response = await fetch(apiUrl(`/api/shelf?itemnumber=${encodeURIComponent(itemnumber)}`));
+			const shelf = await parseApiResponse(response);
 			if (!response.ok) throw new Error(shelf.message);
 			renderShelf(shelf);
 			document.getElementById("shelf-items").scrollTo({ left: 0, behavior: "smooth" });

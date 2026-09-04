@@ -4,9 +4,10 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)));
-const CATALOG_URL = "https://catalog.library.taylor.edu/cgi-bin/koha/opac-search.pl";
+const DEFAULT_CATALOG_URL = "https://catalog.library.taylor.edu/cgi-bin/koha/opac-search.pl";
 const DEFAULT_SHELF_ITEMNUMBER = "2274508";
 const MOVIE_TYPE_SUBJECTS = { fiction: "Feature films", "non-fiction": "Documentary films" };
+const DEFAULT_ALLOWED_ORIGIN = "https://jrscott812.github.io";
 const responseCache = new Map();
 const MAX_BODY_SIZE = 10 * 1024;
 const MAX_CACHE_ENTRIES = 100;
@@ -15,6 +16,10 @@ const STATIC_FILES = new Map([
 	["picker.js", "text/javascript; charset=utf-8"],
 	["styles.css", "text/css; charset=utf-8"]
 ]);
+
+function environmentValue(name, fallback) {
+	return process.env[name]?.trim() || fallback;
+}
 
 function cacheResponse(key, value) {
 	if (responseCache.size >= MAX_CACHE_ENTRIES) responseCache.delete(responseCache.keys().next().value);
@@ -75,9 +80,10 @@ function extractContributorByRole(page, role) {
 }
 
 function extractShelfItems(page) {
+	const catalogUrl = environmentValue("CATALOG_URL", DEFAULT_CATALOG_URL);
 	const items = [...page.matchAll(/href="([^\"]*shelfbrowse_itemnumber=\d+[^\"]*)"[^>]*>\s*<span class="biblio-title"[^>]*>([\s\S]*?)<\/span>/g)]
 		.map((match) => ({
-			recordUrl: new URL(match[1].replace(/&amp;/g, "&"), CATALOG_URL).toString(),
+			recordUrl: new URL(match[1].replace(/&amp;/g, "&"), catalogUrl).toString(),
 			title: decodeHtml(match[2]).replace(/\s*\/\s*$/, "")
 		}))
 		.filter((item) => item.title && item.title !== "<>");
@@ -104,7 +110,8 @@ function extractShelfNavigation(page) {
 }
 
 async function loadShelf(itemnumber) {
-	const shelfUrl = `${CATALOG_URL.replace("opac-search.pl", "svc/shelfbrowser.pl")}?shelfbrowse_itemnumber=${itemnumber}`;
+	const catalogUrl = environmentValue("CATALOG_URL", DEFAULT_CATALOG_URL);
+	const shelfUrl = `${catalogUrl.replace("opac-search.pl", "svc/shelfbrowser.pl")}?shelfbrowse_itemnumber=${itemnumber}`;
 	const shelfPage = await fetchTextCached(shelfUrl);
 	const shelfItems = extractShelfItems(shelfPage).slice(0, 7);
 	const items = await Promise.all(shelfItems.map(async (item) => ({ ...item, posterUrl: await findPoster(item.title) })));
@@ -141,6 +148,7 @@ async function findPoster(title) {
 }
 
 async function findMovie({ movieType, searchTerm, selectionMode }) {
+	const catalogUrl = environmentValue("CATALOG_URL", DEFAULT_CATALOG_URL);
 	const titleSearch = String(searchTerm || "").trim();
 	const parameters = new URLSearchParams({
 		idx: titleSearch ? "ti" : (MOVIE_TYPE_SUBJECTS[movieType] ? "su" : ""),
@@ -149,13 +157,13 @@ async function findMovie({ movieType, searchTerm, selectionMode }) {
 	});
 	["branch:ITU", "available", "ln,rtrn:eng", "l-format:vd"].forEach((limit) => parameters.append("limit", limit));
 
-	const searchUrl = `${CATALOG_URL}?${parameters}`;
+	const searchUrl = `${catalogUrl}?${parameters}`;
 	let page = await fetchTextCached(searchUrl);
 	let recordUrl = searchUrl;
 	const detailUrls = [...page.matchAll(/href="([^\"]*opac-detail\.pl\?biblionumber=\d+)/g)].map((match) => match[1]);
 	const detailUrl = detailUrls[selectionMode === "random" ? Math.floor(Math.random() * detailUrls.length) : 0];
 	if (detailUrl) {
-		recordUrl = new URL(detailUrl.replace(/&amp;/g, "&"), CATALOG_URL).toString();
+		recordUrl = new URL(detailUrl.replace(/&amp;/g, "&"), catalogUrl).toString();
 		page = await fetchTextCached(recordUrl);
 	}
 
@@ -180,13 +188,24 @@ async function findMovie({ movieType, searchTerm, selectionMode }) {
 }
 
 const server = createServer(async (request, response) => {
+	const allowedOrigin = environmentValue("ALLOWED_ORIGIN", DEFAULT_ALLOWED_ORIGIN);
+	const allowGithubPages = request.headers.origin === allowedOrigin;
 	const headers = {
 		"Cache-Control": "no-store",
 		"X-Content-Type-Options": "nosniff",
 		"Referrer-Policy": "no-referrer",
-		"Content-Security-Policy": "default-src 'self'; img-src 'self' https://image.tmdb.org; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'"
+		"Content-Security-Policy": "default-src 'self'; img-src 'self' https://image.tmdb.org; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'",
+		...(allowGithubPages ? { "Access-Control-Allow-Origin": allowedOrigin, Vary: "Origin" } : {})
 	};
 	const requestUrl = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
+	if (request.method === "OPTIONS" && requestUrl.pathname.startsWith("/api/")) {
+		response.writeHead(204, {
+			...headers,
+			"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+			"Access-Control-Allow-Headers": "Content-Type"
+		});
+		return response.end();
+	}
 
 	if (request.method === "POST" && requestUrl.pathname === "/api/movie") {
 		if (!request.headers["content-type"]?.startsWith("application/json")) {
@@ -236,7 +255,9 @@ const server = createServer(async (request, response) => {
 	}
 
 	if (request.method === "GET" && ["/api/shelf", "/api/shelf/start"].includes(requestUrl.pathname)) {
-		const itemnumber = requestUrl.pathname === "/api/shelf/start" ? DEFAULT_SHELF_ITEMNUMBER : requestUrl.searchParams.get("itemnumber");
+		const itemnumber = requestUrl.pathname === "/api/shelf/start"
+			? environmentValue("DEFAULT_SHELF_ITEMNUMBER", DEFAULT_SHELF_ITEMNUMBER)
+			: requestUrl.searchParams.get("itemnumber");
 		if (!/^\d+$/.test(itemnumber || "")) {
 			response.writeHead(400, { ...headers, "Content-Type": "application/json; charset=utf-8" });
 			return response.end(JSON.stringify({ message: "A valid shelf item is required." }));
@@ -268,7 +289,8 @@ const server = createServer(async (request, response) => {
 });
 
 loadEnvironmentFile().then(() => {
-	server.listen(3000, () => console.log("Movie picker running at http://localhost:3000"));
+	const port = Number(process.env.PORT) || 3000;
+	server.listen(port, () => console.log(`Movie picker running at http://localhost:${port}`));
 }).catch((error) => {
 	console.error("Unable to load environment settings:", error.message);
 	process.exitCode = 1;
