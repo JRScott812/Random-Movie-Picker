@@ -129,8 +129,10 @@ function renderMovie(movie) {
 
 async function selectShelfMovie(biblionumber) {
 	const description = document.getElementById("search-description");
+	const results = document.getElementById("results");
 	try {
 		description.innerText = "Loading movie details...";
+		results.classList.add("is-loading");
 		const response = await fetch(apiUrl("/api/movie"), {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
@@ -143,6 +145,8 @@ async function selectShelfMovie(biblionumber) {
 		description.innerText = "Selected from the DVD shelf. Select it again to open the catalog record.";
 	} catch (error) {
 		description.innerText = error.message || "The movie details could not be loaded.";
+	} finally {
+		results.classList.remove("is-loading");
 	}
 }
 

@@ -86,6 +86,10 @@ label span {
 	gap: 0.5rem;
 }
 
+#search-field[hidden] {
+	display: none;
+}
+
 .mode-description {
 	max-width: 38rem;
 	margin: 0.75rem 0 0;
@@ -151,10 +155,18 @@ button {
 	font-weight: 700;
 	text-decoration: none;
 	cursor: pointer;
+	transition: background-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
 }
 
 button:hover {
 	background: var(--taylor-dark-purple);
+	box-shadow: 0 3px 8px rgb(61 33 85 / 20%);
+	transform: translateY(-1px);
+}
+
+button:active {
+	box-shadow: none;
+	transform: translateY(0);
 }
 
 button:disabled {
@@ -182,6 +194,7 @@ button:disabled::before {
 }
 
 #results {
+	position: relative;
 	margin-top: 2rem;
 	padding-top: 1.25rem;
 	border-top: 1px solid var(--border);
@@ -209,6 +222,23 @@ button:disabled::before {
 	animation: spin 700ms linear infinite;
 }
 
+#results.is-loading::after {
+	position: absolute;
+	top: -1px;
+	left: 0;
+	width: 28%;
+	height: 2px;
+	background: var(--taylor-red);
+	content: "";
+	animation: loading-sweep 1.15s ease-in-out infinite;
+}
+
+@keyframes loading-sweep {
+	0% { transform: translateX(-100%); }
+	50% { transform: translateX(250%); }
+	100% { transform: translateX(400%); }
+}
+
 #movie-preview {
 	display: grid;
 	grid-template-columns: 7.5rem minmax(0, 1fr);
@@ -231,6 +261,23 @@ button:disabled::before {
 	padding: 1.25rem;
 	border-top: 3px solid var(--taylor-red);
 	background: #fff;
+}
+
+#movie-preview:not([hidden]),
+#classic-preview:not([hidden]),
+#shelf-preview:not([hidden]) {
+	animation: result-reveal 280ms ease-out both;
+}
+
+@keyframes result-reveal {
+	from {
+		opacity: 0;
+		transform: translateY(0.5rem);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 .shelf-heading {
@@ -267,6 +314,26 @@ button:disabled::before {
 	line-height: 1.25;
 	text-decoration: none;
 	scroll-snap-align: start;
+	transition: color 150ms ease, transform 150ms ease;
+	animation: shelf-item-reveal 240ms ease-out both;
+}
+
+.shelf-item:nth-child(2) { animation-delay: 35ms; }
+.shelf-item:nth-child(3) { animation-delay: 70ms; }
+.shelf-item:nth-child(4) { animation-delay: 105ms; }
+.shelf-item:nth-child(5) { animation-delay: 140ms; }
+.shelf-item:nth-child(6) { animation-delay: 175ms; }
+.shelf-item:nth-child(7) { animation-delay: 210ms; }
+
+@keyframes shelf-item-reveal {
+	from {
+		opacity: 0;
+		transform: translateY(0.4rem);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 .shelf-item img,
@@ -284,6 +351,7 @@ button:disabled::before {
 
 .shelf-item:hover {
 	color: var(--taylor-red);
+	transform: translateY(-0.2rem);
 }
 
 .shelf-item[aria-current="true"] img,
@@ -437,16 +505,36 @@ dd {
 @media (max-width: 34rem) {
 	main {
 		width: min(100% - 1.5rem, 44rem);
+		padding: 2rem 0 3rem;
+	}
+
+	header {
+		margin-bottom: 2rem;
 	}
 
 	.movie-types {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.45rem;
 	}
 
 	.movie-types label {
-		padding: 0.65rem 0.4rem;
+		display: grid;
+		min-height: 2.8rem;
+		place-items: center;
+		padding: 0.45rem 0.3rem;
 		text-align: center;
+	}
+
+	#pick-movie {
+		width: 100%;
+		justify-self: stretch;
+	}
+
+	#movie-preview,
+	#classic-preview,
+	#shelf-preview {
+		padding: 1rem;
 	}
 
 	dl {
@@ -461,18 +549,43 @@ dd {
 		width: 5.5rem;
 	}
 
+	.shelf-items {
+		margin-right: -0.5rem;
+		margin-left: -0.5rem;
+		padding-right: 0.5rem;
+		padding-left: 0.5rem;
+	}
+
+	.shelf-control {
+		flex: 1;
+		min-height: 2.75rem;
+	}
+
 	.random-values {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (max-width: 27rem) {
+	#movie-preview {
+		grid-template-columns: 1fr;
+	}
 
-	*,
-	*::before,
-	*::after {
-		animation-duration: 0.01ms !important;
-		animation-iteration-count: 1 !important;
-		transition-duration: 0.01ms !important;
+	#movie-poster {
+		width: 6.5rem;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	#movie-preview:not([hidden]),
+	#classic-preview:not([hidden]),
+	#shelf-preview:not([hidden]),
+	.shelf-item {
+		animation: none;
+	}
+
+	button,
+	.shelf-item {
+		transition: none;
 	}
 }
