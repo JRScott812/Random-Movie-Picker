@@ -52,7 +52,7 @@ async function loadEnvironmentFile() {
 }
 
 function decodeHtml(value) {
-	return value.replace(/<[^>]*>/g, " ").replace(/&(?:amp|nbsp);/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, "\"").replace(/\s+/g, " ").trim();
+	return value.replace(/<[^>]*>/g, " ").replace(/&(?:amp|nbsp);/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, "\"").replace(/\s+/g, " ").trim();
 }
 
 function extractFirstMatch(value, expression) {
@@ -79,23 +79,28 @@ function extractContributorByRole(page, role) {
 	return name.replace(/^([^,]+),\s*(.+)$/, "$2 $1");
 }
 
+function normalizeShelfTitle(title) {
+	return title.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 function extractShelfItems(page) {
 	const catalogUrl = environmentValue("CATALOG_URL", DEFAULT_CATALOG_URL);
 	const items = [...page.matchAll(/href="([^\"]*shelfbrowse_itemnumber=\d+[^\"]*)"[^>]*>\s*<span class="biblio-title"[^>]*>([\s\S]*?)<\/span>/g)]
 		.map((match) => ({
 			recordUrl: new URL(match[1].replace(/&amp;/g, "&"), catalogUrl).toString(),
-			title: decodeHtml(match[2]).replace(/\s*\/\s*$/, "")
+			title: decodeHtml(match[2]).replace(/\s*\/\s*$/, ""),
+			biblionumber: new URL(match[1].replace(/&amp;/g, "&"), catalogUrl).searchParams.get("biblionumber")
 		}))
 		.filter((item) => item.title && item.title !== "<>");
 
 	const groupedItems = new Map();
 	items.forEach((item) => {
-		const biblionumber = new URL(item.recordUrl).searchParams.get("biblionumber");
-		const existingItem = groupedItems.get(biblionumber);
+		const titleKey = normalizeShelfTitle(item.title);
+		const existingItem = groupedItems.get(titleKey);
 		if (existingItem) {
 			existingItem.copyCount += 1;
 		} else {
-			groupedItems.set(biblionumber, { ...item, copyCount: 1 });
+			groupedItems.set(titleKey, { ...item, copyCount: 1 });
 		}
 	});
 
@@ -166,7 +171,18 @@ async function findMovie({ movieType, searchTerm, selectionMode }) {
 		recordUrl = new URL(detailUrl.replace(/&amp;/g, "&"), catalogUrl).toString();
 		page = await fetchTextCached(recordUrl);
 	}
+	return buildMovieFromRecord(page, recordUrl, selectionMode);
+}
 
+async function findMovieByBiblionumber(biblionumber) {
+	const catalogUrl = environmentValue("CATALOG_URL", DEFAULT_CATALOG_URL);
+	const recordUrl = new URL("opac-detail.pl", catalogUrl);
+	recordUrl.searchParams.set("biblionumber", biblionumber);
+	const page = await fetchTextCached(recordUrl.toString());
+	return buildMovieFromRecord(page, recordUrl.toString(), "shelf");
+}
+
+async function buildMovieFromRecord(page, recordUrl, selectionMode) {
 	const title = extractCatalogTitle(page);
 	const titleNote = extractTitleNote(page);
 	const director = extractContributorByRole(page, "film director.");
@@ -229,6 +245,17 @@ const server = createServer(async (request, response) => {
 		}
 		try {
 			const input = JSON.parse(body);
+			if (input?.biblionumber !== undefined) {
+				if (!/^\d+$/.test(String(input.biblionumber))) {
+					const error = new Error("Choose a valid library record.");
+					error.status = 400;
+					throw error;
+				}
+				const movie = await findMovieByBiblionumber(String(input.biblionumber));
+				response.writeHead(200, { ...headers, "Content-Type": "application/json; charset=utf-8" });
+				response.end(JSON.stringify(movie));
+				return;
+			}
 			if (!input || typeof input !== "object" || !["all", "fiction", "non-fiction"].includes(input.movieType)) {
 				const error = new Error("Choose a valid movie type.");
 				error.status = 400;

@@ -5,6 +5,7 @@ const MOVIE_TYPE_SUBJECTS = {
 const API_ORIGIN = window.location.hostname === "jrscott812.github.io"
 	? "https://random-movie-picker-4d4e4afe3a91.herokuapp.com"
 	: "";
+let activeShelfBiblionumber = "";
 
 function apiUrl(path) {
 	return `${API_ORIGIN}${path}`;
@@ -22,6 +23,19 @@ async function parseApiResponse(response) {
 	return response.json();
 }
 
+function resetPreviews() {
+	activeShelfBiblionumber = "";
+	document.getElementById("classic-preview").hidden = true;
+	document.getElementById("movie-preview").hidden = true;
+	document.getElementById("shelf-preview").hidden = true;
+	document.getElementById("shelf-items").replaceChildren();
+	["shelf-previous", "shelf-next"].forEach((id) => {
+		const button = document.getElementById(id);
+		button.hidden = true;
+		delete button.dataset.itemnumber;
+	});
+}
+
 function displayClassicValues(movieType) {
 	const carousel = movieType === "fiction" ? randomInteger(1, 3) : movieType === "non-fiction" ? 3 : randomInteger(1, 4);
 	const values = {
@@ -35,8 +49,7 @@ function displayClassicValues(movieType) {
 	Object.entries(values).forEach(([name, value]) => {
 		document.getElementById(`${name.replace(/([A-Z])/g, "-$1").toLowerCase()}-value`).innerText = value;
 	});
-	document.getElementById("movie-preview").hidden = true;
-	document.getElementById("shelf-preview").hidden = true;
+	resetPreviews();
 	document.getElementById("classic-preview").hidden = false;
 	document.getElementById("search-description").innerText = "Classic random indices generated.";
 }
@@ -50,6 +63,14 @@ function renderShelf(shelf) {
 		link.target = "_blank";
 		link.rel = "noopener";
 		link.title = item.title;
+		link.dataset.biblionumber = item.biblionumber;
+		if (item.biblionumber === activeShelfBiblionumber) link.setAttribute("aria-current", "true");
+		link.addEventListener("click", (event) => {
+			if (item.biblionumber !== activeShelfBiblionumber) {
+				event.preventDefault();
+				selectShelfMovie(item.biblionumber);
+			}
+		});
 		if (item.posterUrl) {
 			const poster = document.createElement("img");
 			poster.src = item.posterUrl;
@@ -79,17 +100,56 @@ function renderShelf(shelf) {
 	shelfNext.dataset.itemnumber = shelf.nextItemnumber;
 }
 
+function renderMovie(movie) {
+	const movieTitle = document.getElementById("movie-title");
+	const moviePoster = document.getElementById("movie-poster");
+	const movieNote = document.getElementById("movie-note");
+	const directorRow = document.getElementById("director-row");
+	const actorsRow = document.getElementById("actors-row");
+	movieTitle.innerText = movie.title;
+	movieTitle.href = movie.recordUrl;
+	movieNote.innerText = movie.titleNote || "";
+	movieNote.hidden = !movie.titleNote;
+	document.getElementById("movie-director").innerText = movie.director || "";
+	directorRow.hidden = !movie.director;
+	document.getElementById("movie-actors").innerText = movie.actors || "";
+	actorsRow.hidden = !movie.actors;
+	moviePoster.src = movie.posterUrl;
+	moviePoster.alt = movie.posterUrl ? `Poster for ${movie.title}` : "";
+	moviePoster.hidden = !movie.posterUrl;
+	moviePoster.onerror = () => { moviePoster.hidden = true; };
+	document.getElementById("movie-location").innerText = movie.location;
+	document.getElementById("movie-call-number").innerText = movie.callNumber;
+	renderShelf(movie.shelf);
+	document.getElementById("shelf-preview").hidden = movie.shelf.items.length === 0;
+	document.getElementById("movie-preview").hidden = false;
+}
+
+async function selectShelfMovie(biblionumber) {
+	const description = document.getElementById("search-description");
+	try {
+		description.innerText = "Loading movie details...";
+		const response = await fetch(apiUrl("/api/movie"), {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ biblionumber })
+		});
+		const movie = await parseApiResponse(response);
+		if (!response.ok) throw new Error(movie.message);
+		activeShelfBiblionumber = biblionumber;
+		renderMovie(movie);
+		description.innerText = "Selected from the DVD shelf. Select it again to open the catalog record.";
+	} catch (error) {
+		description.innerText = error.message || "The movie details could not be loaded.";
+	}
+}
+
 async function DisplayCatalogSearch(movieType, searchTerm, selectionMode) {
 	const description = document.getElementById("search-description");
-	const moviePreview = document.getElementById("movie-preview");
-	const classicPreview = document.getElementById("classic-preview");
 	const results = document.getElementById("results");
 	const pickMovie = document.getElementById("pick-movie");
-	const shelfPreview = document.getElementById("shelf-preview");
 
-	classicPreview.hidden = true;
-	moviePreview.hidden = true;
-	shelfPreview.hidden = true;
+	resetPreviews();
 	description.innerText = "Finding an available DVD...";
 	description.setAttribute("role", "status");
 	results.classList.add("is-loading");
@@ -109,31 +169,8 @@ async function DisplayCatalogSearch(movieType, searchTerm, selectionMode) {
 			throw new Error(movie.message);
 		}
 
-		const movieTitle = document.getElementById("movie-title");
-		const moviePoster = document.getElementById("movie-poster");
-		const movieNote = document.getElementById("movie-note");
-		const directorRow = document.getElementById("director-row");
-		const actorsRow = document.getElementById("actors-row");
-		movieTitle.innerText = movie.title;
-		movieTitle.href = movie.recordUrl;
-		movieNote.innerText = movie.titleNote || "";
-		movieNote.hidden = !movie.titleNote;
-		document.getElementById("movie-director").innerText = movie.director || "";
-		directorRow.hidden = !movie.director;
-		document.getElementById("movie-actors").innerText = movie.actors || "";
-		actorsRow.hidden = !movie.actors;
-		moviePoster.src = movie.posterUrl;
-		moviePoster.alt = movie.posterUrl ? `Poster for ${movie.title}` : "";
-		moviePoster.hidden = !movie.posterUrl;
-		moviePoster.onerror = () => {
-			moviePoster.hidden = true;
-		};
-		document.getElementById("movie-location").innerText = movie.location;
-		document.getElementById("movie-call-number").innerText = movie.callNumber;
-		renderShelf(movie.shelf);
-		shelfPreview.hidden = movie.shelf.items.length === 0;
+		renderMovie(movie);
 		description.innerText = "Available now in the PALNI catalog.";
-		moviePreview.hidden = false;
 	} catch (error) {
 		description.innerText = error.message || "The catalog could not be reached. Please try again.";
 	} finally {
@@ -146,15 +183,11 @@ async function DisplayCatalogSearch(movieType, searchTerm, selectionMode) {
 
 async function DisplayShelfSearch() {
 	const description = document.getElementById("search-description");
-	const moviePreview = document.getElementById("movie-preview");
-	const classicPreview = document.getElementById("classic-preview");
 	const shelfPreview = document.getElementById("shelf-preview");
 	const results = document.getElementById("results");
 	const pickMovie = document.getElementById("pick-movie");
 
-	classicPreview.hidden = true;
-	moviePreview.hidden = true;
-	shelfPreview.hidden = true;
+	resetPreviews();
 	description.innerText = "Opening the DVD shelf...";
 	description.setAttribute("role", "status");
 	results.classList.add("is-loading");
@@ -180,14 +213,24 @@ async function DisplayShelfSearch() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+	function updateSearchField() {
+		const randomMode = document.querySelector("input[name='selection-mode']:checked").value === "random";
+		const searchField = document.getElementById("search-field");
+		searchField.hidden = !randomMode;
+		document.getElementById("movie-search").disabled = !randomMode;
+	}
+
 	async function browseShelf(itemnumber, button) {
 		button.disabled = true;
 		try {
 			const response = await fetch(apiUrl(`/api/shelf?itemnumber=${encodeURIComponent(itemnumber)}`));
 			const shelf = await parseApiResponse(response);
 			if (!response.ok) throw new Error(shelf.message);
+			activeShelfBiblionumber = "";
+			document.getElementById("movie-preview").hidden = true;
 			renderShelf(shelf);
-			document.getElementById("shelf-items").scrollTo({ left: 0, behavior: "smooth" });
+			document.getElementById("shelf-preview").hidden = shelf.items.length === 0;
+			if (shelf.items.length) document.getElementById("shelf-items").scrollTo({ left: 0, behavior: "smooth" });
 		} catch (error) {
 			document.getElementById("search-description").innerText = error.message || "The shelf could not be loaded.";
 		} finally {
@@ -197,6 +240,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	document.getElementById("shelf-previous").addEventListener("click", (event) => browseShelf(event.currentTarget.dataset.itemnumber, event.currentTarget));
 	document.getElementById("shelf-next").addEventListener("click", (event) => browseShelf(event.currentTarget.dataset.itemnumber, event.currentTarget));
+	document.querySelectorAll("input[name='selection-mode']").forEach((input) => input.addEventListener("change", updateSearchField));
+	updateSearchField();
 
 	document.getElementById("movie-picker").addEventListener("submit", (event) => {
 		event.preventDefault();

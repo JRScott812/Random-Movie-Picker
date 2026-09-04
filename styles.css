@@ -81,6 +81,11 @@ label span {
 	font-weight: 500;
 }
 
+#search-field {
+	display: grid;
+	gap: 0.5rem;
+}
+
 .mode-description {
 	max-width: 38rem;
 	margin: 0.75rem 0 0;
@@ -126,7 +131,6 @@ a:focus-visible {
 
 input[type="search"] {
 	width: 100%;
-	margin-top: -0.9rem;
 	padding: 0.8rem 0.9rem;
 	border: 1px solid var(--border);
 	border-radius: 4px;
@@ -279,6 +283,15 @@ button:disabled::before {
 }
 
 .shelf-item:hover {
+	color: var(--taylor-red);
+}
+
+.shelf-item[aria-current="true"] img,
+.shelf-item[aria-current="true"] .shelf-placeholder {
+	border: 3px solid var(--taylor-red);
+}
+
+.shelf-item[aria-current="true"] {
 	color: var(--taylor-red);
 }
 
