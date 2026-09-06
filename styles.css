@@ -3,7 +3,9 @@
 :root {
 	--taylor-purple: #522d72;
 	--taylor-dark-purple: #3d2155;
-	--taylor-red: #78191c;
+	--taylor-gold: #c1a027;
+	--taylor-gray: #b2b4be;
+	--taylor-sunset: #e14f3d;
 	--ink: #27212a;
 	--paper: #f8f6f1;
 	--border: #d9d0dc;
@@ -18,7 +20,7 @@ body {
 	min-height: 100vh;
 	color: var(--ink);
 	background: linear-gradient(125deg, #f8f6f1 0%, #eee7ef 100%);
-	font-family: "Montserrat", sans-serif;
+	font-family: "Source Serif 4", serif;
 }
 
 main {
@@ -30,12 +32,13 @@ main {
 header {
 	margin-bottom: 2.5rem;
 	padding-left: 1.25rem;
-	border-left: 5px solid var(--taylor-red);
+	border-left: 5px solid var(--taylor-sunset);
 }
 
 .eyebrow {
 	margin: 0 0 0.5rem;
 	color: var(--taylor-purple);
+	font-family: "Montserrat", sans-serif;
 	font-size: 0.75rem;
 	font-weight: 700;
 	letter-spacing: 0.08em;
@@ -45,8 +48,9 @@ header {
 h1 {
 	margin: 0;
 	color: var(--taylor-purple);
-	font-family: "Source Serif 4", serif;
+	font-family: "Montserrat", sans-serif;
 	font-size: clamp(2.5rem, 6vw, 4.25rem);
+	font-weight: 700;
 	line-height: 1;
 }
 
@@ -69,6 +73,7 @@ fieldset {
 
 legend,
 label {
+	font-family: "Montserrat", sans-serif;
 	font-size: 0.9rem;
 	font-weight: 700;
 }
@@ -129,7 +134,7 @@ label span {
 input[type="search"]:focus-visible,
 button:focus-visible,
 a:focus-visible {
-	outline: 3px solid #c9901b;
+	outline: 3px solid var(--taylor-gold);
 	outline-offset: 3px;
 }
 
@@ -174,19 +179,6 @@ button:disabled {
 	cursor: wait;
 }
 
-button:disabled::before {
-	display: inline-block;
-	width: 0.8rem;
-	height: 0.8rem;
-	margin-right: 0.45rem;
-	border: 2px solid rgb(255 255 255 / 40%);
-	border-top-color: #fff;
-	border-radius: 50%;
-	vertical-align: -0.15rem;
-	content: "";
-	animation: spin 700ms linear infinite;
-}
-
 @keyframes spin {
 	to {
 		transform: rotate(360deg);
@@ -216,27 +208,10 @@ button:disabled::before {
 	width: 0.85rem;
 	height: 0.85rem;
 	border: 2px solid var(--border);
-	border-top-color: var(--taylor-red);
+	border-top-color: var(--taylor-sunset);
 	border-radius: 50%;
 	content: "";
 	animation: spin 700ms linear infinite;
-}
-
-#results.is-loading::after {
-	position: absolute;
-	top: -1px;
-	left: 0;
-	width: 28%;
-	height: 2px;
-	background: var(--taylor-red);
-	content: "";
-	animation: loading-sweep 1.15s ease-in-out infinite;
-}
-
-@keyframes loading-sweep {
-	0% { transform: translateX(-100%); }
-	50% { transform: translateX(250%); }
-	100% { transform: translateX(400%); }
 }
 
 #movie-preview {
@@ -245,21 +220,21 @@ button:disabled::before {
 	gap: 1.25rem;
 	margin-top: 1rem;
 	padding: 1.25rem;
-	border-left: 5px solid var(--taylor-red);
+	border-left: 5px solid var(--taylor-sunset);
 	background: #fff;
 }
 
 #classic-preview {
 	margin-top: 1rem;
 	padding: 1.25rem;
-	border-left: 5px solid var(--taylor-red);
+	border-left: 5px solid var(--taylor-sunset);
 	background: #fff;
 }
 
 #shelf-preview {
 	margin-top: 1rem;
 	padding: 1.25rem;
-	border-top: 3px solid var(--taylor-red);
+	border-top: 3px solid var(--taylor-sunset);
 	background: #fff;
 }
 
@@ -350,17 +325,17 @@ button:disabled::before {
 }
 
 .shelf-item:hover {
-	color: var(--taylor-red);
+	color: var(--taylor-sunset);
 	transform: translateY(-0.2rem);
 }
 
 .shelf-item[aria-current="true"] img,
 .shelf-item[aria-current="true"] .shelf-placeholder {
-	border: 3px solid var(--taylor-red);
+	border: 3px solid var(--taylor-sunset);
 }
 
 .shelf-item[aria-current="true"] {
-	color: var(--taylor-red);
+	color: var(--taylor-sunset);
 }
 
 .copy-count {
@@ -369,14 +344,14 @@ button:disabled::before {
 	padding: 0.1rem 0.25rem;
 	border-radius: 3px;
 	color: #fff;
-	background: var(--taylor-red);
+	background: var(--taylor-sunset);
 	font-size: 0.6rem;
 	font-weight: 700;
 	vertical-align: 0.05rem;
 }
 
 .shelf-item:focus-visible {
-	outline: 3px solid #c9901b;
+	outline: 3px solid var(--taylor-gold);
 	outline-offset: 3px;
 }
 
@@ -402,7 +377,7 @@ button:disabled::before {
 .random-values dd {
 	margin: 0.35rem 0 0;
 	color: var(--taylor-purple);
-	font-family: "Source Serif 4", serif;
+	font-family: "Montserrat", sans-serif;
 	font-size: 1.8rem;
 	font-weight: 700;
 }
@@ -443,9 +418,10 @@ h2 {
 
 #movie-title {
 	color: var(--taylor-purple);
-	font-family: "Source Serif 4", serif;
+	font-family: "Montserrat", sans-serif;
 	font-size: 1.8rem;
-	text-decoration-color: var(--taylor-red);
+	font-weight: 700;
+	text-decoration-color: var(--taylor-sunset);
 	text-decoration-thickness: 2px;
 	text-underline-offset: 0.2em;
 }
