@@ -6,9 +6,31 @@ const API_ORIGIN = window.location.hostname === "jrscott812.github.io"
 	? "https://random-movie-picker-4d4e4afe3a91.herokuapp.com"
 	: "";
 let activeShelfBiblionumber = "";
+const movieCache = new Map();
 
 function apiUrl(path) {
 	return `${API_ORIGIN}${path}`;
+}
+
+function prefetchMovie(biblionumber) {
+	if (!biblionumber || movieCache.has(biblionumber)) return;
+	const request = fetch(apiUrl("/api/movie"), {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ biblionumber })
+	}).then(async (response) => {
+		const movie = await parseApiResponse(response);
+		if (!response.ok) throw new Error(movie.message);
+		return movie;
+	}).catch((error) => {
+		movieCache.delete(biblionumber);
+		throw error;
+	});
+	movieCache.set(biblionumber, request);
+}
+
+function prefetchShelfMetadata(shelf) {
+	(shelf.items || []).forEach((item) => prefetchMovie(item.biblionumber));
 }
 
 function randomInteger(min, max) {
@@ -55,6 +77,7 @@ function displayClassicValues(movieType) {
 }
 
 function renderShelf(shelf) {
+	prefetchShelfMetadata(shelf);
 	const shelfItems = document.getElementById("shelf-items");
 	shelfItems.replaceChildren(...shelf.items.map((item) => {
 		const link = document.createElement("a");
@@ -133,13 +156,8 @@ async function selectShelfMovie(biblionumber) {
 	try {
 		description.innerText = "Loading movie details...";
 		results.classList.add("is-loading");
-		const response = await fetch(apiUrl("/api/movie"), {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ biblionumber })
-		});
-		const movie = await parseApiResponse(response);
-		if (!response.ok) throw new Error(movie.message);
+		prefetchMovie(biblionumber);
+		const movie = await movieCache.get(biblionumber);
 		activeShelfBiblionumber = biblionumber;
 		renderMovie(movie);
 		description.innerText = "Selected from the DVD shelf. Select it again to open the catalog record.";
