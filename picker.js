@@ -7,13 +7,15 @@ const API_ORIGIN = window.location.hostname === "jrscott812.github.io"
 	: "";
 let activeShelfBiblionumber = "";
 const movieCache = new Map();
+const prefetchQueue = [];
+let isDrainingPrefetchQueue = false;
 
 function apiUrl(path) {
 	return `${API_ORIGIN}${path}`;
 }
 
 function prefetchMovie(biblionumber) {
-	if (!biblionumber || movieCache.has(biblionumber)) return;
+	if (!biblionumber || movieCache.has(biblionumber)) return movieCache.get(biblionumber);
 	const request = fetch(apiUrl("/api/movie"), {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
@@ -27,10 +29,30 @@ function prefetchMovie(biblionumber) {
 		throw error;
 	});
 	movieCache.set(biblionumber, request);
+	return request;
 }
 
+async function drainPrefetchQueue() {
+	if (isDrainingPrefetchQueue) return;
+	isDrainingPrefetchQueue = true;
+	while (prefetchQueue.length) {
+		const biblionumber = prefetchQueue.shift();
+		if (movieCache.has(biblionumber)) continue;
+		await prefetchMovie(biblionumber).catch(() => {});
+	}
+	isDrainingPrefetchQueue = false;
+}
+
+// Shelf items already render with title + poster from the shelf response.
+// Full details (director, actors, location, etc.) are queued and fetched one
+// at a time in the background so they don't compete with the initial shelf
+// render; clicking an item jumps straight to the front via prefetchMovie.
 function prefetchShelfMetadata(shelf) {
-	(shelf.items || []).forEach((item) => prefetchMovie(item.biblionumber));
+	(shelf.items || []).forEach((item) => {
+		if (!item.biblionumber || movieCache.has(item.biblionumber) || prefetchQueue.includes(item.biblionumber)) return;
+		prefetchQueue.push(item.biblionumber);
+	});
+	drainPrefetchQueue();
 }
 
 function randomInteger(min, max) {
@@ -125,6 +147,7 @@ function renderShelf(shelf) {
 
 function renderMovie(movie) {
 	const movieTitle = document.getElementById("movie-title");
+	const movieYear = document.getElementById("movie-year");
 	const moviePoster = document.getElementById("movie-poster");
 	const movieNote = document.getElementById("movie-note");
 	const movieDirector = document.getElementById("movie-director");
@@ -132,6 +155,8 @@ function renderMovie(movie) {
 	const actorsRow = document.getElementById("actors-row");
 	movieTitle.innerText = movie.title;
 	movieTitle.href = movie.recordUrl;
+	movieYear.innerText = movie.year ? `(${movie.year})` : "";
+	movieYear.hidden = !movie.year;
 	movieNote.innerText = movie.titleNote || "";
 	movieNote.hidden = !movie.titleNote;
 	movieDirector.innerText = movie.director ? `Directed by ${movie.director}` : "";
@@ -238,10 +263,20 @@ async function DisplayShelfSearch() {
 
 document.addEventListener("DOMContentLoaded", () => {
 	function updateSearchField() {
-		const randomMode = document.querySelector("input[name='selection-mode']:checked").value === "random";
+		const selectedMode = document.querySelector("input[name='selection-mode']:checked").value;
 		const searchField = document.getElementById("search-field");
-		searchField.hidden = !randomMode;
-		document.getElementById("movie-search").disabled = !randomMode;
+		searchField.hidden = selectedMode !== "random";
+		document.getElementById("movie-search").disabled = selectedMode !== "random";
+		document.getElementById("pick-movie").hidden = selectedMode === "shelf";
+	}
+
+	function handleSelectionModeChange() {
+		updateSearchField();
+		resetPreviews();
+		document.getElementById("search-description").innerText = "";
+		if (document.querySelector("input[name='selection-mode']:checked").value === "shelf") {
+			DisplayShelfSearch();
+		}
 	}
 
 	async function browseShelf(itemnumber, button) {
@@ -264,7 +299,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	document.getElementById("shelf-previous").addEventListener("click", (event) => browseShelf(event.currentTarget.dataset.itemnumber, event.currentTarget));
 	document.getElementById("shelf-next").addEventListener("click", (event) => browseShelf(event.currentTarget.dataset.itemnumber, event.currentTarget));
-	document.querySelectorAll("input[name='selection-mode']").forEach((input) => input.addEventListener("change", updateSearchField));
+	document.querySelectorAll("input[name='selection-mode']").forEach((input) => input.addEventListener("change", handleSelectionModeChange));
 	updateSearchField();
 
 	document.getElementById("movie-picker").addEventListener("submit", (event) => {

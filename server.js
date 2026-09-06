@@ -14,6 +14,7 @@ const MAX_CACHE_ENTRIES = 100;
 const STATIC_FILES = new Map([
 	["index.html", "text/html; charset=utf-8"],
 	["picker.js", "text/javascript; charset=utf-8"],
+	["theme.js", "text/javascript; charset=utf-8"],
 	["styles.css", "text/css; charset=utf-8"]
 ]);
 
@@ -65,6 +66,11 @@ function extractCatalogTitle(page) {
 	if (titleMatch) return titleMatch.slice(1).filter(Boolean).map(decodeHtml).join(" ").replace(/\s*\/\s*$/, "");
 
 	return extractFirstMatch(page, /<h1 class="title"[^>]*>([\s\S]*?)<\//).replace(/\s*\/\s*$/, "");
+}
+
+function extractYear(page) {
+	const dateText = extractFirstMatch(page, /class="rda264_date">([\s\S]*?)<\/span>/);
+	return dateText.match(/\d{4}/)?.[0] || "";
 }
 
 function extractTitleNote(page) {
@@ -184,6 +190,7 @@ async function findMovieByBiblionumber(biblionumber) {
 
 async function buildMovieFromRecord(page, recordUrl, selectionMode) {
 	const title = extractCatalogTitle(page);
+	const year = extractYear(page);
 	const titleNote = extractTitleNote(page);
 	const director = extractContributorByRole(page, "film director.");
 	const actors = extractFirstMatch(page, /class="marcnote marcnote-511"[^>]*>([\s\S]*?)<\/p>/);
@@ -200,7 +207,7 @@ async function buildMovieFromRecord(page, recordUrl, selectionMode) {
 	const posterUrl = await findPoster(title);
 	const shelfItemnumber = holding.match(/shelfbrowse_itemnumber=(\d+)/)?.[1];
 	const shelf = shelfItemnumber ? await loadShelf(shelfItemnumber) : { items: [], previousItemnumber: "", nextItemnumber: "" };
-	return { title, titleNote, director, actors, location: [library, shelving].filter(Boolean).join(" - "), callNumber, recordUrl, posterUrl, shelf };
+	return { title, year, titleNote, director, actors, location: [library, shelving].filter(Boolean).join(" - "), callNumber, recordUrl, posterUrl, shelf };
 }
 
 const server = createServer(async (request, response) => {
